@@ -1,0 +1,11 @@
+# python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# 데이터셋 (용량이 커서 저장소에는 포함하지 않음. data/README.md 참고)
+data/DeepPCB
+data/patches/
+
+# 학습 체크포인트 (.pt는 용량 문제로 제외, 배포용 onnx만 커밋)
+*.pt
