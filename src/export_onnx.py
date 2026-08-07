@@ -33,13 +33,17 @@ def main():
     channels = input_channels(args.model)
     dummy = torch.randn(1, channels, 64, 64)
 
-    torch.onnx.export(
-        model, dummy, out_path,
+    export_args = dict(
         input_names=['input'], output_names=['logits'],
         dynamic_axes={'input': {0: 'batch'}, 'logits': {0: 'batch'}},
         opset_version=13,
-        external_data=False,  # 가중치를 .data 파일로 분리하지 않고 onnx 파일 하나로 저장
     )
+    try:
+        # 최신 torch: 가중치를 .data 파일로 분리하지 않고 onnx 파일 하나로 저장
+        torch.onnx.export(model, dummy, out_path, external_data=False, **export_args)
+    except TypeError:
+        # 구버전 torch(2.5 이하)는 external_data 인자가 없음 (기본이 단일 파일 저장)
+        torch.onnx.export(model, dummy, out_path, **export_args)
     size_mb = os.path.getsize(out_path) / 1024 / 1024
     print(f'ONNX 저장: {out_path} ({size_mb:.2f} MB)')
 
