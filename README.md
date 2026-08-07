@@ -33,7 +33,7 @@ flowchart LR
 
 ## 1. 데이터셋 구축
 
-[DeepPCB](https://github.com/tangsanli5201/DeepPCB) (MIT License) 데이터셋을 사용했습니다.
+[DeepPCB](https://github.com/tangsanli5201/DeepPCB) 데이터셋을 사용했습니다.
 640x640 흑백 PCB 이미지 1,500쌍에 결함 위치(박스)와 종류가 어노테이션되어 있고,
 공식 분할(학습 1,000 / 테스트 500)을 그대로 따랐습니다.
 

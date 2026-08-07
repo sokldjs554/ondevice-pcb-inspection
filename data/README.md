@@ -1,6 +1,6 @@
 # 데이터셋 준비
 
-이 프로젝트는 [DeepPCB](https://github.com/tangsanli5201/DeepPCB) 데이터셋을 사용합니다. (MIT License)
+이 프로젝트는 [DeepPCB](https://github.com/tangsanli5201/DeepPCB) 데이터셋을 사용합니다.
 
 - 640x640 흑백 PCB 이미지 1,500쌍 (결함 없는 템플릿 + 결함이 있는 테스트 이미지)
 - 결함 6종: open, short, mousebite, spur, copper, pin-hole
