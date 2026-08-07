@@ -242,9 +242,3 @@ python deploy/detect_board.py --image <보드 이미지>  # 6. 보드 검출
   (x86에서 INT8이 더 느렸던 것처럼, 하드웨어가 바뀌면 결과가 달라진다는 걸 배웠기 때문에)
 - **보드 단위 정식 평가**: 지금은 커버리지 기반 자체 지표인데, DeepPCB 공식 평가 스크립트
   (mAP/F-score)로도 측정해서 논문 벤치마크와 비교해보고 싶습니다.
-
-## 참고자료
-
-- DeepPCB 데이터셋: https://github.com/tangsanli5201/DeepPCB (MIT License)
-- Tang, S. et al., "Online PCB Defect Detector On A New PCB Defect Dataset" (2019)
-- ONNX Runtime Quantization: https://onnxruntime.ai/docs/performance/model-optimizations/quantization.html
