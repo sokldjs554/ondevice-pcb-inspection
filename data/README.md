@@ -45,4 +45,4 @@ data/patches/
 > Tang, S., He, F., Huang, X., Yang, J. "Online PCB Defect Detector On A New PCB Defect Dataset." (2019)
 > https://github.com/tangsanli5201/DeepPCB
 
-데이터셋 라이선스는 원본 저장소(MIT)를 따릅니다.
+데이터셋 라이선스는 원본 저장소를 따릅니다.
