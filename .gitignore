@@ -9,3 +9,7 @@ data/patches/
 
 # 학습 체크포인트 (.pt는 용량 문제로 제외, 배포용 onnx만 커밋)
 *.pt
+
+# C++ 빌드 산출물
+deploy/cpp/build/
+result_cpp.png

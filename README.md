@@ -205,6 +205,10 @@ python deploy/camera_demo.py --send <PC_IP>:5000
 - `detect_board.py` (정밀 검사): **MobileNetV2 INT8** — 정확도 우선
 - `camera_demo.py` (실시간 데모): **SimpleCNN INT8** — 프레임 속도 우선 (2.5배 빠름, 크기 1/5)
 
+파이썬을 설치할 수 없는 장비를 대비해서, 추론과 후처리를 **ONNX Runtime C++ API로
+포팅한 데모**도 만들었습니다 ([deploy/cpp](deploy/cpp)). 같은 보드에서 파이썬 버전과
+동일한 검출 결과가 나오는 것까지 확인했습니다.
+
 ## 실행 방법 (전체)
 
 ```bash
