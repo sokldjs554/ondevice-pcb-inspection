@@ -1,0 +1,10 @@
+# NPU 컴파일 실험용 (메인 requirements.txt와 별도)
+# 용량이 커서 NPU 실험을 할 때만 설치하면 됩니다.
+ethos-u-vela
+tensorflow-cpu
+tf_keras
+ai_edge_litert
+onnx2tf
+onnx_graphsurgeon
+sng4onnx
+onnxsim

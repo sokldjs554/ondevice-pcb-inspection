@@ -121,6 +121,33 @@ python src/quantize_onnx.py --model simple_cnn
 python src/benchmark.py --models models/simple_cnn_fp32.onnx models/simple_cnn_int8.onnx
 ```
 
+### NPU 컴파일까지 확인해보기
+
+여기까지 하고 나니 "이 모델이 실제 NPU에 올라가긴 하나?"가 궁금했는데, NPU 보드가 없어서
+확인할 방법이 없었습니다. 그러다 ARM Ethos-U 계열 NPU의 공식 컴파일러 **Vela**가
+하드웨어 없이도 컴파일과 성능 추정을 해준다는 걸 알고 직접 돌려봤습니다.
+
+| 모델 | NPU 연산 배치 | 추정 추론시간 (U55-256) | SRAM | 정확도 (TFLite INT8) |
+|---|---|---|---|---|
+| SimpleCNN | 10개 **100% NPU** (CPU 폴백 0) | 1.249 ms (800 FPS) | 85.3 KB | 92.83% |
+| MobileNetV2 | 65개 **100% NPU** (CPU 폴백 0) | 4.890 ms (205 FPS) | 124.4 KB | 95.98% |
+
+- 두 모델 다 **CPU 폴백 없이 전부 NPU에 매핑**됐습니다. MobileNetV2의 depthwise conv까지
+  지원되는 걸 확인했습니다.
+- MAC 유닛을 8배(32→256) 늘려도 속도는 2배가 안 올랐습니다 — **메모리 대역폭이 병목**이라는
+  뜻으로, 하드웨어 사양만으로는 한계가 있다는 걸 숫자로 보게 됐습니다.
+- ONNX Runtime INT8과 TFLite INT8의 정확도 차이가 0.03~0.22%p로, 툴체인이 달라도 결과가
+  거의 같았습니다.
+
+자세한 과정과 전체 비교표: [npu/README.md](npu/README.md)
+
+```bash
+pip install -r npu/requirements.txt
+python npu/convert_tflite.py --model mobilenet_v2   # ONNX -> INT8 TFLite
+python npu/compile_npu.py                          # Vela로 NPU 컴파일 + 성능 비교
+python npu/verify_tflite.py --model mobilenet_v2   # 양자화 후 정확도 검증
+```
+
 ## 4. 보드 단위 결함 검출 (후처리)
 
 패치 분류기를 실제 검사에 쓰려면 "보드 한 장에서 결함이 어디에 있는지"를 찾아야 합니다.
@@ -241,8 +268,9 @@ python deploy/detect_board.py --image <보드 이미지>  # 6. 보드 검출
   묶기로 어느 정도 커버되지만, 근본적으로는 멀티스케일 패치가 필요합니다.
 - **슬라이딩 윈도우 중복 연산**: stride 32면 인접 윈도우끼리 절반씩 겹칩니다. 분류기를
   FCN 형태로 바꿔 보드 전체를 한 번에 추론하면 훨씬 빨라질 것 같습니다.
-- **실제 NPU 포팅**: 지금은 ONNX Runtime CPU까지 검증했습니다. INT8 모델을 실제 NPU에
-  올려 컴파일하면 양자화 정확도/속도가 어떻게 달라지는지 확인해보고 싶습니다.
-  (x86에서 INT8이 더 느렸던 것처럼, 하드웨어가 바뀌면 결과가 달라진다는 걸 배웠기 때문에)
+- **실제 NPU 보드 검증**: ARM Ethos-U 컴파일러(Vela)로 컴파일과 성능 추정까지는 해봤지만,
+  실제 보드에서 측정한 값은 아닙니다. NPU 개발보드를 구해서 추정치와 실측이 얼마나
+  차이 나는지 확인해보고 싶습니다. 다른 벤더 NPU에서는 지원 연산이 달라 폴백이 생길 수
+  있다는 점도 직접 확인해보고 싶은 부분입니다.
 - **보드 단위 정식 평가**: 지금은 커버리지 기반 자체 지표인데, DeepPCB 공식 평가 스크립트
   (mAP/F-score)로도 측정해서 논문 벤치마크와 비교해보고 싶습니다.

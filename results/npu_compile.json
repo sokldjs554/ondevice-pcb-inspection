@@ -1,0 +1,98 @@
+[
+  {
+    "model": "mobilenet_v2_int8",
+    "accelerator": "ethos-u55-32",
+    "nn_macs": 24462592,
+    "inference_time_ms": 6.966,
+    "inferences_per_second": 143.6,
+    "sram_kb": 124.4,
+    "flash_kb": 2236.3,
+    "vela_model_kb": 2245.2,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "65 (100.0%)"
+  },
+  {
+    "model": "mobilenet_v2_int8",
+    "accelerator": "ethos-u55-128",
+    "nn_macs": 24462592,
+    "inference_time_ms": 5.07,
+    "inferences_per_second": 197.2,
+    "sram_kb": 124.4,
+    "flash_kb": 2236.3,
+    "vela_model_kb": 2244.7,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "65 (100.0%)"
+  },
+  {
+    "model": "mobilenet_v2_int8",
+    "accelerator": "ethos-u55-256",
+    "nn_macs": 24462592,
+    "inference_time_ms": 4.89,
+    "inferences_per_second": 204.5,
+    "sram_kb": 124.4,
+    "flash_kb": 2236.3,
+    "vela_model_kb": 2244.6,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "65 (100.0%)"
+  },
+  {
+    "model": "mobilenet_v2_int8",
+    "accelerator": "ethos-u65-256",
+    "nn_macs": 24462592,
+    "inference_time_ms": 0.602,
+    "inferences_per_second": 1661.5,
+    "sram_kb": 167.8,
+    "flash_kb": 0.0,
+    "vela_model_kb": 2246.6,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "65 (100.0%)"
+  },
+  {
+    "model": "simple_cnn_int8",
+    "accelerator": "ethos-u55-32",
+    "nn_macs": 10666880,
+    "inference_time_ms": 2.203,
+    "inferences_per_second": 454.0,
+    "sram_kb": 85.3,
+    "flash_kb": 528.6,
+    "vela_model_kb": 532.7,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "10 (100.0%)"
+  },
+  {
+    "model": "simple_cnn_int8",
+    "accelerator": "ethos-u55-128",
+    "nn_macs": 10666880,
+    "inference_time_ms": 1.384,
+    "inferences_per_second": 722.6,
+    "sram_kb": 85.3,
+    "flash_kb": 528.6,
+    "vela_model_kb": 532.7,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "10 (100.0%)"
+  },
+  {
+    "model": "simple_cnn_int8",
+    "accelerator": "ethos-u55-256",
+    "nn_macs": 10666880,
+    "inference_time_ms": 1.249,
+    "inferences_per_second": 800.4,
+    "sram_kb": 85.3,
+    "flash_kb": 528.6,
+    "vela_model_kb": 532.9,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "10 (100.0%)"
+  },
+  {
+    "model": "simple_cnn_int8",
+    "accelerator": "ethos-u65-256",
+    "nn_macs": 10666880,
+    "inference_time_ms": 0.188,
+    "inferences_per_second": 5312.9,
+    "sram_kb": 85.3,
+    "flash_kb": 0.0,
+    "vela_model_kb": 532.7,
+    "cpu_operators": "0 (0.0%)",
+    "npu_operators": "10 (100.0%)"
+  }
+]

@@ -13,3 +13,7 @@ data/patches/
 # C++ 빌드 산출물
 deploy/cpp/build/
 result_cpp.png
+
+# NPU 컴파일 중간 산출물 (SavedModel은 용량이 커서 제외, tflite와 리포트만 커밋)
+npu/models/*_saved_model/
+npu/vela_out/
