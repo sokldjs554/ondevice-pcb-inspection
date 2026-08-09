@@ -81,6 +81,48 @@ class SlidingWindowDetector:
         return defects
 
 
+def detect_multiscale(detector, gray, scales=(1.0, 0.5)):
+    """이미지를 축소해가며 여러 번 훑어서 큰 결함까지 잡는다.
+
+    64x64 윈도우로는 96px가 넘는 결함이 한 윈도우에 안 들어와서 놓치는 경우가 있었다.
+    (실측: 96px 초과 결함 recall 71.4%) 보드를 절반으로 줄이면 128px 결함이 64px로
+    보이므로, 같은 모델로 큰 결함까지 잡을 수 있다. 모델을 다시 학습할 필요가 없다.
+
+    축소본에서 찾은 박스는 원래 크기로 되돌려서 합친다.
+    """
+    found = []
+    for s in scales:
+        if s == 1.0:
+            img = gray
+        else:
+            img = cv2.resize(gray, None, fx=s, fy=s, interpolation=cv2.INTER_AREA)
+        for d in detector.detect(img):
+            box = [int(round(v / s)) for v in d['box']]
+            found.append({**d, 'box': box, 'scale': s})
+    return merge_overlapping(found)
+
+
+def merge_overlapping(defects, iou_thresh=0.3):
+    """겹치는 검출을 하나로 합친다 (멀티스케일에서 같은 결함이 여러 번 잡히는 것 정리).
+
+    같은 종류의 결함이 크게 겹치면 확신도가 높은 쪽만 남긴다. 흔히 쓰는 NMS와 같은
+    아이디어인데, 클래스별로 따로 적용해서 서로 다른 결함이 뭉치지 않게 했다.
+    """
+    def iou(a, b):
+        ix1, iy1 = max(a[0], b[0]), max(a[1], b[1])
+        ix2, iy2 = min(a[2], b[2]), min(a[3], b[3])
+        inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+        union = (a[2]-a[0])*(a[3]-a[1]) + (b[2]-b[0])*(b[3]-b[1]) - inter
+        return inter / union if union > 0 else 0.0
+
+    kept = []
+    for d in sorted(defects, key=lambda x: -x['score']):
+        if all(iou(d['box'], k['box']) < iou_thresh
+               for k in kept if k['type'] == d['type']):
+            kept.append(d)
+    return kept
+
+
 def local_max_diff(gray, template, box, block=16, pixel_thresh=100):
     """검출 박스 안에서 템플릿과 가장 많이 다른 블록의 차분 비율을 구한다.
 
@@ -191,6 +233,8 @@ def main():
     parser.add_argument('--template', default=None,
                         help='결함 없는 템플릿 이미지 (지정하면 정상 구조물 오검출을 걸러냄). '
                              'auto를 주면 _test.jpg -> _temp.jpg로 자동 추정')
+    parser.add_argument('--multiscale', action='store_true',
+                        help='보드를 축소해가며 여러 번 훑어 큰 결함까지 검출 (이미지 피라미드)')
     parser.add_argument('--refine', action='store_true',
                         help='템플릿 차분으로 검출 박스를 실제 결함 크기로 좁힘 (--template 필요)')
     parser.add_argument('--stride', type=int, default=32)
@@ -205,7 +249,7 @@ def main():
 
     detector = SlidingWindowDetector(args.onnx, stride=args.stride, thresh=args.thresh)
     t0 = time.time()
-    defects = detector.detect(gray)
+    defects = detect_multiscale(detector, gray) if args.multiscale else detector.detect(gray)
     elapsed = time.time() - t0
 
     # 템플릿 비교로 정상 구조물 오검출 제거

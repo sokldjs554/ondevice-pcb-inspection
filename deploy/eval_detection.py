@@ -17,7 +17,8 @@ import argparse
 import cv2
 import numpy as np
 
-from detect_board import SlidingWindowDetector, load_gt_boxes, filter_by_template, CLASS_NAMES
+from detect_board import (SlidingWindowDetector, load_gt_boxes, filter_by_template,
+                          detect_multiscale, CLASS_NAMES)
 
 
 def iou(a, b):
@@ -50,6 +51,8 @@ def main():
     parser.add_argument('--cover', type=float, default=0.5, help='정답 박스가 이 비율 이상 덮이면 검출로 인정')
     parser.add_argument('--use-template', action='store_true',
                         help='결함 없는 템플릿 이미지와 비교해 정상 구조물 오검출을 제거')
+    parser.add_argument('--multiscale', action='store_true',
+                        help='이미지 피라미드로 큰 결함까지 검출')
     parser.add_argument('--refine', action='store_true',
                         help='템플릿 차분으로 검출 박스를 좁혀 위치 정밀도를 높임')
     parser.add_argument('--iou', type=float, default=None,
@@ -79,7 +82,7 @@ def main():
     for img_rel, ann_rel in items:
         gray = cv2.imread(os.path.join(args.pcb_root, img_rel), cv2.IMREAD_GRAYSCALE)
         gt = load_gt_boxes(os.path.join(args.pcb_root, ann_rel))
-        dets = detector.detect(gray)
+        dets = detect_multiscale(detector, gray) if args.multiscale else detector.detect(gray)
 
         if args.use_template:
             tpl_path = os.path.join(args.pcb_root, img_rel.replace('_test.jpg', '_temp.jpg'))
@@ -109,6 +112,8 @@ def main():
         opts.append('템플릿 비교')
     if args.refine:
         opts.append('박스 정밀화')
+    if args.multiscale:
+        opts.append('멀티스케일')
     opt_note = (', ' + '+'.join(opts)) if opts else ''
     print(f'보드 {len(items)}장 / 정답 결함 {n_gt}개 / 검출 {n_det}개  '
           f'(thresh={args.thresh}, {criterion}{opt_note})')
