@@ -17,7 +17,7 @@ import argparse
 import cv2
 import numpy as np
 
-from detect_board import SlidingWindowDetector, load_gt_boxes, CLASS_NAMES
+from detect_board import SlidingWindowDetector, load_gt_boxes, filter_by_template, CLASS_NAMES
 
 
 def coverage(gt, det):
@@ -39,6 +39,8 @@ def main():
     parser.add_argument('--stride', type=int, default=32)
     parser.add_argument('--thresh', type=float, default=0.8)
     parser.add_argument('--cover', type=float, default=0.5, help='정답 박스가 이 비율 이상 덮이면 검출로 인정')
+    parser.add_argument('--use-template', action='store_true',
+                        help='결함 없는 템플릿 이미지와 비교해 정상 구조물 오검출을 제거')
     args = parser.parse_args()
 
     items = []
@@ -59,6 +61,12 @@ def main():
         gt = load_gt_boxes(os.path.join(args.pcb_root, ann_rel))
         dets = detector.detect(gray)
 
+        if args.use_template:
+            tpl_path = os.path.join(args.pcb_root, img_rel.replace('_test.jpg', '_temp.jpg'))
+            template = cv2.imread(tpl_path, cv2.IMREAD_GRAYSCALE)
+            if template is not None:
+                dets = filter_by_template(dets, gray, template)
+
         n_gt += len(gt)
         n_det += len(dets)
         # recall: 정답 박스 기준으로 매칭되는 검출이 있는지
@@ -76,7 +84,9 @@ def main():
     recall = n_found / n_gt if n_gt else 0
     recall_type = n_found_type / n_gt if n_gt else 0
     precision = n_correct_det / n_det if n_det else 0
-    print(f'보드 {len(items)}장 / 정답 결함 {n_gt}개 / 검출 {n_det}개  (thresh={args.thresh}, stride={args.stride}, cover={args.cover})')
+    tpl_note = ', 템플릿 비교 ON' if args.use_template else ''
+    print(f'보드 {len(items)}장 / 정답 결함 {n_gt}개 / 검출 {n_det}개  '
+          f'(thresh={args.thresh}, stride={args.stride}, cover={args.cover}{tpl_note})')
     print(f'recall (위치):        {recall:.3f}  ({n_found}/{n_gt})')
     print(f'recall (위치+종류):   {recall_type:.3f}  ({n_found_type}/{n_gt})')
     print(f'precision:            {precision:.3f}  ({n_correct_det}/{n_det})')
