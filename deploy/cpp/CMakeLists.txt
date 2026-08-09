@@ -16,5 +16,11 @@ add_executable(detect_board main.cpp)
 target_include_directories(detect_board PRIVATE ${ORT_HOME}/include ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(detect_board PRIVATE ${ORT_HOME}/lib)
 target_link_libraries(detect_board onnxruntime)
-# 실행 파일이 라이브러리 경로를 기억하게 해서 LD_LIBRARY_PATH 없이 실행되게 함
-set_target_properties(detect_board PROPERTIES BUILD_RPATH ${ORT_HOME}/lib)
+
+# 실행 파일이 라이브러리 경로를 기억하게 해서 LD_LIBRARY_PATH 없이 실행되게 함.
+# macOS는 링크할 때 라이브러리 경로가 @rpath로 박히기 때문에 INSTALL_RPATH까지 지정해야
+# 실행 시 "Library not loaded / image not found" 에러가 나지 않는다.
+set_target_properties(detect_board PROPERTIES
+    BUILD_RPATH ${ORT_HOME}/lib
+    INSTALL_RPATH ${ORT_HOME}/lib
+    BUILD_WITH_INSTALL_RPATH TRUE)

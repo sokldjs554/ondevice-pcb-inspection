@@ -38,3 +38,21 @@ cmake --build build
   ...
 결과 이미지 저장: result_cpp.png
 ```
+
+## 문제 해결
+
+**`Library not loaded ... Reason: image not found` (macOS) 또는 `error while loading shared libraries` (Linux)**
+
+실행 파일이 onnxruntime 라이브러리 위치를 못 찾는 경우입니다. 라이브러리 경로를
+직접 지정해서 실행하면 바로 확인할 수 있습니다.
+
+```bash
+# macOS
+DYLD_LIBRARY_PATH=/path/to/onnxruntime/lib ./deploy/cpp/build/detect_board <모델> <이미지>
+
+# Linux
+LD_LIBRARY_PATH=/path/to/onnxruntime/lib ./deploy/cpp/build/detect_board <모델> <이미지>
+```
+
+빌드할 때 경로가 실행 파일에 박히도록 CMakeLists에 rpath 설정을 넣어뒀는데,
+예전 버전으로 빌드한 경우 `build` 폴더를 지우고 다시 빌드하면 해결됩니다.
