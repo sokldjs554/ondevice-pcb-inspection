@@ -12,10 +12,19 @@ if(NOT DEFINED ORT_HOME)
     message(FATAL_ERROR "-DORT_HOME=<onnxruntime 압축 푼 경로> 를 지정해주세요")
 endif()
 
-add_executable(detect_board main.cpp)
+add_executable(detect_board
+    main.cpp
+    src/detector.cpp
+    src/image_io.cpp
+    src/postprocess.cpp
+    src/tcp_sender.cpp)
+
 target_include_directories(detect_board PRIVATE ${ORT_HOME}/include ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(detect_board PRIVATE ${ORT_HOME}/lib)
 target_link_libraries(detect_board onnxruntime)
+
+# 컴파일 경고를 켜두면 실수를 빨리 찾을 수 있어서 넣었다
+target_compile_options(detect_board PRIVATE -Wall -Wextra)
 
 # 실행 파일이 라이브러리 경로를 기억하게 해서 LD_LIBRARY_PATH 없이 실행되게 함.
 # macOS는 링크할 때 라이브러리 경로가 @rpath로 박히기 때문에 INSTALL_RPATH까지 지정해야
