@@ -73,13 +73,34 @@ TFLite INT8 경로를 같은 테스트셋(패치 6,140장)으로 비교했습니
 
 ## 실행 방법
 
+변환이 끝난 INT8 TFLite 모델은 `npu/models/`에 포함해 뒀습니다. 컴파일과 검증만 하려면
+변환 단계(=tensorflow 설치)는 건너뛰어도 됩니다.
+
 ```bash
 pip install -r npu/requirements.txt
 
-python npu/convert_tflite.py --model simple_cnn      # ONNX -> INT8 TFLite
-python npu/convert_tflite.py --model mobilenet_v2
 python npu/compile_npu.py                            # Vela로 NPU 컴파일 + 성능 비교
 python npu/verify_tflite.py --model mobilenet_v2     # 양자화 후 정확도 검증
+```
+
+ONNX에서 TFLite 변환까지 직접 다시 하려면 아래를 추가로 설치하고 실행합니다.
+
+```bash
+pip install -r npu/requirements-convert.txt
+
+python npu/convert_tflite.py --model simple_cnn      # ONNX -> INT8 TFLite
+python npu/convert_tflite.py --model mobilenet_v2
+```
+
+### 인텔 맥(x86_64)에서 설치할 때
+
+`ethos-u-vela`는 macOS x86_64 휠이 없어서 소스로 빌드해야 하고(Xcode Command Line Tools
+필요), `ai_edge_litert`는 x86_64 휠이 1.0.1까지만 있습니다. `--only-binary :all:` 옵션을
+쓰면 vela 설치가 실패합니다.
+
+```bash
+pip install ethos-u-vela
+pip install ai_edge_litert==1.0.1
 ```
 
 컴파일 결과는 `npu/vela_out/<구성>/`에, 성능 요약은 `results/npu_compile.json`에 저장됩니다.

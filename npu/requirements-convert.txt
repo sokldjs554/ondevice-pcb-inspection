@@ -1,0 +1,16 @@
+# ONNX -> TFLite(INT8) 변환을 직접 다시 할 때만 필요한 패키지들
+#
+# npu/convert_tflite.py 가 쓰는 도구들입니다. 변환 결과는 이미 npu/models/*.tflite로
+# 저장소에 들어있으므로, 컴파일·검증만 할 거라면 설치하지 않아도 됩니다.
+# (tensorflow만 500MB 정도 됩니다)
+
+tensorflow-cpu
+tf_keras
+onnx2tf
+onnx_graphsurgeon
+sng4onnx
+onnxsim
+
+# 인텔 맥(x86_64) 참고
+# - tensorflow-cpu는 2.16.2가 macOS x86_64 마지막 휠입니다:
+#   pip install "tensorflow-cpu==2.16.2"

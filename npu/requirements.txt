@@ -1,10 +1,16 @@
-# NPU 컴파일 실험용 (메인 requirements.txt와 별도)
-# 용량이 커서 NPU 실험을 할 때만 설치하면 됩니다.
+# NPU 컴파일/검증용 (메인 requirements.txt와 별도)
+#
+# 변환이 끝난 INT8 TFLite 모델(npu/models/*.tflite)은 저장소에 포함돼 있어서,
+# Vela 컴파일과 정확도 검증만 하려면 아래 두 개만 있으면 됩니다.
+#
+#   pip install -r npu/requirements.txt
+#
+# ONNX -> TFLite 변환을 직접 다시 하려면 requirements-convert.txt를 추가로 설치하세요.
+
 ethos-u-vela
-tensorflow-cpu
-tf_keras
 ai_edge_litert
-onnx2tf
-onnx_graphsurgeon
-sng4onnx
-onnxsim
+
+# 인텔 맥(x86_64) 참고
+# - ethos-u-vela는 macOS x86_64 휠이 없어서 소스로 빌드됩니다.
+#   `--only-binary :all:` 옵션을 빼고 설치해야 합니다 (Xcode Command Line Tools 필요).
+# - ai_edge_litert는 x86_64 휠이 1.0.1까지만 있습니다: pip install ai_edge_litert==1.0.1
