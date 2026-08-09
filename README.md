@@ -193,13 +193,35 @@ precision이 낮은 주된 원인은 **보드에 원래 있는 비아 홀을 pin
 
 *비아 홀 오검출 3건이 제거된 결과 (적용 전 7건 → 적용 후 4건)*
 
-```bash
-python deploy/detect_board.py --image <보드> --template auto
-python deploy/eval_detection.py --num-boards 100 --use-template
-```
+#### 박스 정밀화와 논문 기준 평가
+
+자체 지표(커버리지)로는 잘 나왔지만, DeepPCB 논문은 **IoU 0.33 이상**을 정검출로 봅니다.
+그 기준으로 재보니 recall이 14.8%밖에 안 됐습니다. 원인은 명확했습니다 — 슬라이딩 윈도우
+박스는 64px 배수라서 실제 결함(평균 39x36px)보다 훨씬 크고, IoU가 구조적으로 낮게 나옵니다.
+
+그래서 템플릿 차분 영역으로 **박스를 실제 결함 크기까지 좁히는** 후처리를 추가했습니다.
+여백(pad)은 정답 어노테이션 스타일에 맞춰 실측으로 정했습니다.
+
+| pad | 0px | 4px | **8px** | 16px | 20px |
+|---|---|---|---|---|---|
+| 평균 IoU | 0.169 | 0.291 | **0.420** | 0.305 | 0.234 |
+
+| 논문 기준 (IoU≥0.33) | recall (위치) | recall (위치+종류) | precision | F-score |
+|---|---|---|---|---|
+| 기본 (윈도우 박스) | 14.8% | 14.1% | 10.6% | 12.4% |
+| **+ 템플릿 비교 + 박스 정밀화** | **74.3%** | **72.4%** | **68.0%** | **71.0%** |
+
+참고로 DeepPCB 논문의 검출 모델(DIS-YOLO)은 98.6% mAP / 98.2% F-score를 보고합니다.
+제 방식은 **분류기 + 후처리** 구조라 박스 정밀도에서 근본적인 차이가 있고, 그만큼 격차가
+납니다. 다만 "결함이 있는지, 대략 어디인지"만 필요한 검사 시나리오라면 커버리지 기준
+recall 97.9%로 충분히 쓸 수 있다고 봅니다. 정확한 박스가 필요하면 검출 모델로 가야 한다는 걸
+숫자로 확인한 셈입니다.
 
 ```bash
 python deploy/eval_detection.py --onnx models/mobilenet_v2_int8.onnx --num-boards 100
+python deploy/eval_detection.py --num-boards 100 --use-template            # 오검출 제거
+python deploy/eval_detection.py --num-boards 100 --iou 0.33 --use-template --refine  # 논문 기준
+python deploy/detect_board.py --image <보드> --template auto --refine
 ```
 
 ### 삽질 기록: 패치 정확도는 96%인데 보드에서는 결함을 놓친다?
