@@ -6,7 +6,7 @@ PCB 표면 결함(open, short, mousebite, spur, copper, pin-hole) 6종을 엣지
 
 ![검출 데모](results/detections/20085291_test_result.png)
 
-> 초록 박스: 모델 검출 결과 / 빨강 박스: 정답(어노테이션) — 테스트 보드의 정답 결함 9개를 모두 검출 (MobileNetV2 INT8, 보드 1장당 약 0.5초)
+> 초록 박스: 모델 검출 결과 / 빨강 박스: 정답(어노테이션) — 테스트 보드의 정답 결함 9개를 모두 검출 (MobileNetV2 INT8, 보드 1장당 약 0.6초)
 
 ## 왜 이 프로젝트를 했나
 
@@ -189,7 +189,7 @@ connected components로 묶어 결함 박스와 종류를 출력하는 후처리
 
 ![보드 검출 데모](results/detections/90100000_test_result.png)
 
-- 640x640 보드 1장 = 윈도우 361개 → 배치 추론 약 0.5초 (MobileNetV2 INT8, Intel 2코어 노트북)
+- 640x640 보드 1장 = 윈도우 361개 → 배치 추론 약 0.6초 (MobileNetV2 INT8, Intel 2코어 노트북)
 
 보드 단위 성능은 패치 정확도와 별개로 평가해야 해서, 테스트 보드 100장에 대해
 recall(정답 결함 중 찾은 비율)과 precision(검출 중 실제 결함 비율)을 재는
