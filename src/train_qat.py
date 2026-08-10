@@ -47,6 +47,8 @@ def main():
     parser.add_argument('--lr', type=float, default=1e-4, help='QAT는 낮은 학습률로 미세조정')
     parser.add_argument('--batch-size', type=int, default=64)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--skip-control', action='store_true',
+                        help='대조군(FP32를 같은 조건으로 파인튜닝) 실험을 건너뛴다')
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -102,9 +104,30 @@ def main():
     out_path = 'models/simple_cnn_qat_int8.pt'
     torch.save(int8_model.state_dict(), out_path)
 
+    # 6. 대조군: QAT는 3 epoch를 "추가로" 학습한 것이라, 그대로 비교하면 불공정하다.
+    #    같은 조건(epoch 수, 학습률)으로 FP32만 파인튜닝한 모델과 비교해야
+    #    QAT 자체의 이득을 알 수 있다.
+    ctrl_acc = None
+    if not args.skip_control:
+        ctrl = copy.deepcopy(model)
+        ctrl.train()
+        ctrl_opt = torch.optim.Adam(ctrl.parameters(), lr=args.lr)
+        for epoch in range(1, args.epochs + 1):
+            t0 = time.time()
+            loss, acc = run_epoch(ctrl, train_loader, criterion, ctrl_opt, device, train=True)
+            print(f'[대조군 FP32 {epoch}/{args.epochs}] train loss {loss:.4f} acc {acc:.4f} '
+                  f'| {time.time() - t0:.1f}s')
+        ctrl_acc = evaluate(ctrl, test_loader)
+
     print()
-    print(f'FP32           : {fp32_acc:.4f}')
-    print(f'QAT INT8       : {qat_acc:.4f}  ({(qat_acc - fp32_acc) * 100:+.2f}%p)')
+    print(f'FP32 (기준)                  : {fp32_acc:.4f}')
+    if ctrl_acc is not None:
+        print(f'FP32 + {args.epochs}ep 파인튜닝 (대조군) : {ctrl_acc:.4f}  '
+              f'({(ctrl_acc - fp32_acc) * 100:+.2f}%p)')
+    print(f'QAT INT8 ({args.epochs}ep)              : {qat_acc:.4f}  '
+          f'({(qat_acc - fp32_acc) * 100:+.2f}%p vs FP32)')
+    if ctrl_acc is not None:
+        print(f'-> QAT의 순수 이득 (대조군 대비): {(qat_acc - ctrl_acc) * 100:+.2f}%p')
     print(f'저장: {out_path}')
     print('\n(PTQ INT8 결과는 src/benchmark.py 출력과 비교하세요)')
 
