@@ -94,13 +94,20 @@ python npu/convert_tflite.py --model mobilenet_v2
 
 ### 인텔 맥(x86_64)에서 설치할 때
 
-`ethos-u-vela`는 macOS x86_64 휠이 없어서 소스로 빌드해야 하고(Xcode Command Line Tools
-필요), `ai_edge_litert`는 x86_64 휠이 1.0.1까지만 있습니다. `--only-binary :all:` 옵션을
-쓰면 vela 설치가 실패합니다.
+`ethos-u-vela`는 macOS x86_64 휠이 없어서 소스로 빌드해야 합니다(Xcode Command Line
+Tools 필요). `--only-binary :all:` 옵션을 쓰면 설치가 실패합니다.
 
 ```bash
 pip install ethos-u-vela
-pip install ai_edge_litert==1.0.1
+```
+
+변환까지 직접 하려면 버전을 맞춰야 합니다. 최신 `onnx2tf`가 쓰는 `ai_edge_litert`
+바이너리가 macOS 14.2용으로 빌드돼 있어서 그보다 낮은 macOS에서는 로드되지 않습니다.
+`ai_edge_litert`를 쓰지 않는 마지막 버전(1.26.9)과, 인텔 맥 휠이 있는 마지막
+tensorflow(2.16.2)를 묶어둔 파일을 따로 만들어 뒀습니다.
+
+```bash
+pip install -r npu/requirements-convert-intel-mac.txt
 ```
 
 컴파일 결과는 `npu/vela_out/<구성>/`에, 성능 요약은 `results/npu_compile.json`에 저장됩니다.

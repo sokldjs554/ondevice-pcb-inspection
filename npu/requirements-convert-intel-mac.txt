@@ -1,0 +1,23 @@
+# 인텔 맥(x86_64) + Python 3.11 에서 ONNX -> TFLite 변환이 되는 조합
+#
+#   pip install -r npu/requirements-convert-intel-mac.txt
+#
+# 왜 버전을 다 고정했는지 (전부 실제로 겪은 에러입니다)
+# - onnx2tf 1.27 이상은 ai_edge_litert를 import 하는데, 그 바이너리가 macOS 14.2용으로
+#   빌드돼 있어서 그보다 낮은 macOS에서는 dlopen이 실패합니다.
+#   -> ai_edge_litert를 쓰지 않는 마지막 버전인 1.26.9로 고정
+# - tensorflow-cpu는 macOS x86_64 휠이 2.16.2까지만 있습니다.
+# - onnx 최신 버전은 ml_dtypes 새 타입(float4_e2m1fn)을 요구하는데,
+#   tensorflow 2.16이 쓰는 ml_dtypes 0.3.x에는 그 타입이 없습니다. -> onnx 1.16.2로 고정
+# - psutil, pillow는 onnx2tf/변환 스크립트가 쓰는데 자동으로 안 깔립니다.
+
+tensorflow-cpu==2.16.2
+tf_keras==2.16.0
+ml_dtypes==0.3.2
+onnx==1.16.2
+onnx2tf==1.26.9
+onnx_graphsurgeon
+sng4onnx
+onnxsim
+psutil
+pillow
