@@ -18,7 +18,8 @@ add_executable(detect_board
     src/image_io.cpp
     src/postprocess.cpp
     src/tcp_sender.cpp
-    src/batch.cpp)
+    src/batch.cpp
+    src/serial_bus.cpp)
 
 target_include_directories(detect_board PRIVATE ${ORT_HOME}/include ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(detect_board PRIVATE ${ORT_HOME}/lib)

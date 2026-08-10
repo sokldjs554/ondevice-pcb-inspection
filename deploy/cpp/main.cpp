@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <thread>
 #include <vector>
@@ -18,6 +19,7 @@
 #include "src/image_io.h"
 #include "src/postprocess.h"
 #include "src/batch.h"
+#include "src/serial_bus.h"
 #include "src/tcp_sender.h"
 
 namespace {
@@ -40,6 +42,11 @@ struct Options {
     int limit = 0;
     bool pipeline = false;
     bool quiet = false;
+    // 보드 내부 버스로 결과 내보내기
+    std::string spi;          // /dev/spidev0.0
+    std::string i2c;          // /dev/i2c-1:0x42
+    int spi_speed = 1000000;  // 1MHz
+    bool bus_selftest = false;
 };
 
 void print_usage(const char* prog) {
@@ -63,7 +70,13 @@ void print_usage(const char* prog) {
         "  --limit <정수>     앞에서 N장만 검사\n"
         "  --pipeline         읽기·전처리를 별도 스레드로 돌려 추론과 겹침\n"
         "  --jsonl <경로>     보드별 결과를 한 줄 JSON으로 저장\n"
-        "  --quiet            보드별 출력 생략, 요약만\n",
+        "  --quiet            보드별 출력 생략, 요약만\n"
+        "\n"
+        " 보드 내부 버스로 판정 내보내기 (MCU/PLC 연동 가정)\n"
+        "  --spi <장치>       예: /dev/spidev0.0 (리눅스)\n"
+        "  --spi-speed <Hz>   SPI 클럭 (기본 1000000)\n"
+        "  --i2c <장치:주소>  예: /dev/i2c-1:0x42 (리눅스)\n"
+        "  --bus-selftest     하드웨어 없이 프레임 생성/해석/CRC를 점검\n",
         prog);
 }
 
@@ -98,6 +111,10 @@ bool parse_args(int argc, char** argv, Options* o) {
         else if (a == "--dir")        { auto v = next("--dir");       if (!v) return false; o->dir = v; }
         else if (a == "--jsonl")      { auto v = next("--jsonl");     if (!v) return false; o->jsonl = v; }
         else if (a == "--limit")      { auto v = next("--limit");     if (!v) return false; o->limit = std::stoi(v); }
+        else if (a == "--spi")        { auto v = next("--spi");       if (!v) return false; o->spi = v; }
+        else if (a == "--i2c")        { auto v = next("--i2c");       if (!v) return false; o->i2c = v; }
+        else if (a == "--spi-speed")  { auto v = next("--spi-speed"); if (!v) return false; o->spi_speed = std::stoi(v); }
+        else if (a == "--bus-selftest") { o->bus_selftest = true; }
         else if (a == "--pipeline")   { o->pipeline = true; }
         else if (a == "--quiet")      { o->quiet = true; }
         else if (a == "--refine")     { o->refine = true; }
@@ -105,7 +122,7 @@ bool parse_args(int argc, char** argv, Options* o) {
         else if (a == "--help" || a == "-h") { return false; }
         else { std::printf("모르는 옵션: %s\n", a.c_str()); return false; }
     }
-    return !o->image.empty() || !o->dir.empty();
+    return !o->image.empty() || !o->dir.empty() || o->bus_selftest;
 }
 
 std::string auto_template_path(const std::string& image_path) {
@@ -182,6 +199,9 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    // 하드웨어 없이 버스 프레임만 점검
+    if (o.bus_selftest) return run_bus_selftest() ? 0 : 1;
+
     // 배치 검사 모드: 폴더 안의 보드를 연속으로 검사한다
     if (!o.dir.empty()) {
         SlidingWindowDetector detector(o.model, o.stride, o.thresh, o.threads);
@@ -243,6 +263,24 @@ int main(int argc, char** argv) {
     for (const Detection& d : dets) boxes.push_back(d.box);
     if (save_with_boxes(o.out, gray, boxes)) {
         std::printf("결과 이미지 저장: %s\n", o.out.c_str());
+    }
+
+    // 보드 내부 버스로 판정 내보내기 (SPI / I2C)
+    if (!o.spi.empty() || !o.i2c.empty()) {
+        std::string err;
+        std::unique_ptr<Transport> bus =
+            o.spi.empty() ? make_i2c(o.i2c, &err) : make_spi(o.spi, o.spi_speed, &err);
+        if (!bus) {
+            std::printf("버스 열기 실패: %s\n", err.c_str());
+            return 1;
+        }
+        std::vector<uint8_t> frame = build_frame(board_id_from_name(base_name(o.image)), dets);
+        if (bus->send(frame, &err)) {
+            std::printf("%s로 %zu바이트 프레임 전송 완료\n", bus->name().c_str(), frame.size());
+        } else {
+            std::printf("전송 실패: %s\n", err.c_str());
+            return 1;
+        }
     }
 
     if (!o.send.empty()) {
