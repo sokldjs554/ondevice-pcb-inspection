@@ -64,7 +64,9 @@ bool parse_args(int argc, char** argv, Options* o) {
     for (int i = 1; i < argc; i++) {
         std::string a = argv[i];
         auto next = [&](const char* name) -> const char* {
-            if (i + 1 >= argc) {
+            // 값이 비어 있거나 다음 옵션이 그대로 넘어온 경우를 걸러낸다.
+            // (쉘 변수를 안 채우고 --image $IMG 로 실행하면 여기에 걸린다)
+            if (i + 1 >= argc || (argv[i + 1][0] == '-' && argv[i + 1][1] == '-')) {
                 std::printf("%s 뒤에 값이 필요합니다\n", name);
                 return nullptr;
             }
