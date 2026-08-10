@@ -42,12 +42,12 @@ Ethos-U55는 MAC 유닛 수(32/128/256)로 구성이 나뉩니다. 같은 모델
 
 | 모델 | NPU 구성 | 추론 시간 | FPS | SRAM |
 |---|---|---|---|---|
-| SimpleCNN | Ethos-U55-32 | 2.203 ms | 454 | 85.3 KB |
-| SimpleCNN | Ethos-U55-128 | 1.384 ms | 723 | 85.3 KB |
-| SimpleCNN | Ethos-U55-256 | **1.249 ms** | **800** | 85.3 KB |
-| MobileNetV2 | Ethos-U55-32 | 6.966 ms | 144 | 124.4 KB |
-| MobileNetV2 | Ethos-U55-128 | 5.070 ms | 197 | 124.4 KB |
-| MobileNetV2 | Ethos-U55-256 | **4.890 ms** | **205** | 124.4 KB |
+| SimpleCNN | Ethos-U55-32 | 1.938 ms | 516 | 85.3 KB |
+| SimpleCNN | Ethos-U55-128 | 1.122 ms | 892 | 85.3 KB |
+| SimpleCNN | Ethos-U55-256 | **0.987 ms** | **1013** | 85.3 KB |
+| MobileNetV2 | Ethos-U55-32 | 6.965 ms | 144 | 124.4 KB |
+| MobileNetV2 | Ethos-U55-128 | 5.069 ms | 197 | 124.4 KB |
+| MobileNetV2 | Ethos-U55-256 | **4.889 ms** | **205** | 124.4 KB |
 
 여기서 배운 것:
 
@@ -65,8 +65,8 @@ TFLite INT8 경로를 같은 테스트셋(패치 6,140장)으로 비교했습니
 
 | 모델 | ONNX Runtime INT8 | TFLite INT8 (NPU용) | 차이 |
 |---|---|---|---|
-| SimpleCNN | 93.05% | 92.83% | -0.22%p |
-| MobileNetV2 | 96.01% | 95.98% | -0.03%p |
+| SimpleCNN | 93.05% | 92.96% | -0.09%p |
+| MobileNetV2 | 96.01% | 96.01% | 0.00%p |
 
 양자화 툴체인이 달라도 정확도는 거의 동일했습니다. 두 경로 모두 캘리브레이션 방식이
 비슷해서인 것으로 보입니다.
@@ -109,6 +109,12 @@ tensorflow(2.16.2)를 묶어둔 파일을 따로 만들어 뒀습니다.
 ```bash
 pip install -r npu/requirements-convert-intel-mac.txt
 ```
+
+버전을 내리고 나면 이번엔 변환이 `ValueError: axes don't match array`로 실패합니다.
+`models/*_fp32.onnx`는 최신 PyTorch의 새 exporter로 내보낸 opset 18 그래프인데,
+onnx2tf 1.26.x가 이걸 처리하지 못하기 때문입니다. 그래서 같은 가중치를 opset 13으로
+내보낸 사본(`npu/models/*_fp32_opset13.onnx`)을 함께 넣어뒀고, `convert_tflite.py`가
+이 파일이 있으면 자동으로 먼저 사용합니다.
 
 컴파일 결과는 `npu/vela_out/<구성>/`에, 성능 요약은 `results/npu_compile.json`에 저장됩니다.
 

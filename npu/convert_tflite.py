@@ -50,7 +50,18 @@ def main():
     parser.add_argument('--num-samples', type=int, default=200)
     args = parser.parse_args()
 
-    onnx_path = args.onnx or f'models/{args.model}_fp32.onnx'
+    # NPU 변환용으로는 opset 13으로 내보낸 ONNX를 우선 사용한다.
+    # models/*_fp32.onnx는 최신 PyTorch의 새 exporter로 만들어서 opset 18인데,
+    # onnx2tf 구버전(1.26.x)이 이 그래프를 처리하지 못하고
+    # "ValueError: axes don't match array"로 죽는다. 구형 macOS처럼 최신 onnx2tf를
+    # 쓸 수 없는 환경도 있어서, 호환성이 좋은 opset 13 사본을 따로 넣어뒀다.
+    default_onnx = f'{args.out_dir}/{args.model}_fp32_opset13.onnx'
+    if args.onnx:
+        onnx_path = args.onnx
+    elif os.path.exists(default_onnx):
+        onnx_path = default_onnx
+    else:
+        onnx_path = f'models/{args.model}_fp32.onnx'
     channels = 1 if args.model == 'simple_cnn' else 3
     os.makedirs(args.out_dir, exist_ok=True)
     saved_model_dir = os.path.join(args.out_dir, f'{args.model}_saved_model')

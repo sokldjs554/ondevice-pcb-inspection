@@ -157,8 +157,8 @@ python src/train_qat.py --epochs 3
 
 | 모델 | NPU 연산 배치 | 추정 추론시간 (U55-256) | SRAM | 정확도 (TFLite INT8) |
 |---|---|---|---|---|
-| SimpleCNN | 10개 **100% NPU** (CPU 폴백 0) | 1.249 ms (800 FPS) | 85.3 KB | 92.83% |
-| MobileNetV2 | 65개 **100% NPU** (CPU 폴백 0) | 4.890 ms (205 FPS) | 124.4 KB | 95.98% |
+| SimpleCNN | 10개 **100% NPU** (CPU 폴백 0) | 0.987 ms (1013 FPS) | 85.3 KB | 92.96% |
+| MobileNetV2 | 65개 **100% NPU** (CPU 폴백 0) | 4.889 ms (205 FPS) | 124.4 KB | 96.01% |
 
 - 두 모델 다 **CPU 폴백 없이 전부 NPU에 매핑**됐습니다. MobileNetV2의 depthwise conv까지
   지원되는 걸 확인했습니다.
