@@ -166,3 +166,20 @@ python deploy/eval_by_size.py --num-boards 200 --multiscale
 96px 초과 결함 recall이 64.3%(9/14) → 92.9%(13/14), 전체는 95.5% → 98.1%가 됩니다.
 모델을 다시 학습하지 않고 얻은 결과입니다. 다만 96px 초과 결함이 200장에 14개뿐이라
 이 구간은 표본이 작습니다.
+
+## 17. C++ 배치 검사 — 순차 vs 파이프라인
+
+```bash
+D=data/DeepPCB/PCBData/group00041/00041
+./deploy/cpp/build/detect_board --dir $D --limit 20 --quiet
+./deploy/cpp/build/detect_board --dir $D --limit 20 --quiet --pipeline
+./deploy/cpp/build/detect_board --dir $D --limit 20 --quiet --threads 1
+./deploy/cpp/build/detect_board --dir $D --limit 20 --quiet --threads 1 --pipeline
+```
+
+![](17_cpp_batch.png)
+
+폴더 안의 보드를 연속 검사하며 처리량을 잽니다. 읽기·전처리를 별도 스레드로 돌리는
+파이프라인은 추론이 코어를 다 쓰고 있을 때는 오히려 느리고(9.42 → 9.73초), 추론을
+1스레드로 묶어 코어를 남겨뒀을 때만 빨라집니다(13.33 → 13.02초).
+**남는 코어가 있을 때만 이득**이라 기본은 순차로 뒀습니다.
