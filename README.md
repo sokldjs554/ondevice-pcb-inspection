@@ -3,6 +3,7 @@
 PCB 표면 결함(open, short, mousebite, spur, copper, pin-hole) 6종을 엣지 디바이스에서 직접 검출하는 것을 목표로,
 **데이터셋 구축 → 모델 학습 → 경량화(ONNX + INT8 양자화) → 보드 단위 검출(후처리) → 임베디드 배포/모니터링**까지
 온디바이스 AI 개발 사이클 전체를 직접 구현해본 프로젝트입니다.
+검출 파이프라인은 **Python과 C++ 두 버전**으로 만들고, 두 결과가 같은지 자동 비교로 검증했습니다.
 
 ![검출 데모](results/detections/20085291_test_result.png)
 
@@ -27,7 +28,7 @@ flowchart LR
     C --> D[ONNX 변환]
     D --> E[INT8 정적 양자화<br>캘리브레이션]
     E --> F[슬라이딩 윈도우 검출<br>+ 후처리]
-    F --> G[엣지 디바이스 배포<br>Raspberry Pi]
+    F --> G[엣지 디바이스 배포<br>Python / C++]
     G -->|TCP/JSON| H[모니터링 서버<br>PC]
 ```
 
@@ -356,10 +357,34 @@ python deploy/camera_demo.py --send <PC_IP>:5000
 - `detect_board.py` (정밀 검사): **MobileNetV2 INT8** — 정확도 우선
 - `camera_demo.py` (실시간 데모): **SimpleCNN INT8** — 프레임 속도 우선 (2.5배 빠름, 크기 1/5)
 
-파이썬을 설치할 수 없는 장비를 대비해서, **검출 파이프라인 전체를 ONNX Runtime C++ API로
-포팅**했습니다 ([deploy/cpp](deploy/cpp)). 추론뿐 아니라 템플릿 비교, 박스 정밀화,
-멀티스케일, TCP 전송까지 파이썬 버전과 같은 기능을 지원하고, OpenCV가 하던 일(리사이즈,
-모폴로지, connected components)은 직접 구현해서 의존성을 onnxruntime 하나로 줄였습니다.
+## 6. C++ 포팅 (파이썬을 올릴 수 없는 장비 대비)
+
+여기까지는 전부 파이썬입니다. 그런데 실제 검사 장비 중에는 파이썬이나 OpenCV를 올리기
+어려운 것도 있습니다. 그래서 **검출 파이프라인 전체를 ONNX Runtime C++ API로 포팅**했습니다
+([deploy/cpp](deploy/cpp)). 추론만 옮긴 게 아니라 템플릿 비교, 박스 정밀화, 멀티스케일,
+TCP 전송까지 파이썬과 같은 기능을 지원합니다. (C++ 약 950줄)
+
+의존성은 **onnxruntime 하나**입니다. 이미지 입출력은 저장소에 포함한 stb 싱글헤더를 쓰고,
+OpenCV가 하던 일은 직접 구현했습니다.
+
+| OpenCV 함수 | C++ 구현 방식 |
+|---|---|
+| `connectedComponents` | 8방향 BFS 라벨링 |
+| `morphologyEx(MORPH_CLOSE)` | 7x7 사각 커널 팽창 → 침식 |
+| `resize(INTER_AREA)` | 출력 픽셀에 대응하는 입력 사각형의 평균 |
+| 블록 평균 최대값 | 적분 영상(summed-area table)으로 O(1) 계산 |
+
+파일도 역할별로 나눴습니다. 처음엔 `main.cpp` 한 파일이었는데 기능이 늘면서 분리했습니다.
+
+```
+main.cpp              커맨드라인 파싱, 전체 흐름, 벤치마크 모드
+src/detector.*        ONNX 세션, 슬라이딩 윈도우, 인접 윈도우 묶기, 멀티스케일, NMS
+src/postprocess.*     템플릿 차분 필터, 박스 정밀화
+src/image_io.*        stb 래퍼: 흑백 로드, 면적 평균 축소, 박스 그려서 PNG 저장
+src/tcp_sender.*      JSON 문자열 생성, POSIX 소켓 전송
+```
+
+### 파이썬과 같은 결과가 나오는지 검증
 
 두 버전이 정말 같은 결과를 내는지 `deploy/cpp/compare_with_python.py`로 자동 비교했습니다.
 테스트 보드 30장 기준 **FP32는 30장 전부 검출 개수·클래스·박스 좌표까지 동일**했고,
@@ -369,7 +394,9 @@ INT8은 값을 256단계로 뭉개기 때문에 확신도가 임계값 0.8 근�
 뒤집혔습니다. 같은 JPEG을 OpenCV로 디코딩해 PNG로 저장한 뒤 양쪽에 넣으니 결과가 달랐던
 보드 7장이 전부 같아져서 원인을 확인할 수 있었습니다.
 
-`--bench` 옵션으로 스레드 수별 속도도 재봤습니다 (보드 1장, 10회 평균).
+### 스레드 수별 속도
+
+`--bench` 옵션을 넣어 스레드 수별 속도도 재봤습니다 (보드 1장, 10회 평균).
 
 | 장비 | 모델 | 1스레드 | 2스레드 | 4스레드 |
 |---|---|---|---|---|
@@ -388,7 +415,7 @@ INT8은 값을 256단계로 뭉개기 때문에 확신도가 임계값 0.8 근�
 
 ## 실행 화면
 
-각 단계를 직접 실행한 터미널 캡처 14장을 정리해뒀습니다.
+각 단계를 직접 실행한 터미널 캡처 16장을 정리해뒀습니다.
 → [docs/screenshots/README.md](docs/screenshots/README.md)
 
 ## 실행 방법 (전체)
