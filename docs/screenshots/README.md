@@ -151,3 +151,18 @@ python deploy/eval_detection.py --use-template --refine --iou 0.33 --num-boards 
 
 박스 정밀화 없이 IoU 기준으로 재면 recall이 14.8%까지 떨어집니다. 검출 박스가
 윈도우 단위(64px 배수)로 나오기 때문인데, 템플릿 차분으로 박스를 좁혀 75.0%가 됐습니다.
+
+## 15~16. 결함 크기별 recall — 단일 스케일 vs 멀티스케일
+
+```bash
+python deploy/eval_by_size.py --num-boards 200
+python deploy/eval_by_size.py --num-boards 200 --multiscale
+```
+
+![](15_size.png)
+![](16_size_multiscale.png)
+
+64x64 윈도우 하나에 안 들어오는 큰 결함이 약합니다. 보드를 절반으로 줄여 한 번 더 훑으면
+96px 초과 결함 recall이 64.3%(9/14) → 92.9%(13/14), 전체는 95.5% → 98.1%가 됩니다.
+모델을 다시 학습하지 않고 얻은 결과입니다. 다만 96px 초과 결함이 200장에 14개뿐이라
+이 구간은 표본이 작습니다.
