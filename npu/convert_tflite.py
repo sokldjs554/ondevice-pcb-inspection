@@ -61,8 +61,14 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         tmp_onnx = os.path.join(tmp, os.path.basename(onnx_path))
         shutil.copy2(onnx_path, tmp_onnx)
-        subprocess.run(['onnx2tf', '-i', tmp_onnx, '-o', saved_model_dir, '-osd'],
-                       check=True, stdout=subprocess.DEVNULL)
+        # 성공하면 로그가 너무 길어서 감추고, 실패하면 원인을 봐야 하니 그대로 출력한다.
+        # (처음엔 stdout을 그냥 버렸다가, 에러가 나도 이유를 알 수 없어서 고쳤다)
+        proc = subprocess.run(['onnx2tf', '-i', tmp_onnx, '-o', saved_model_dir, '-osd'],
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        if proc.returncode != 0:
+            print('--- onnx2tf 실패. 아래는 onnx2tf가 출력한 내용입니다 ---')
+            print(proc.stdout)
+            raise SystemExit(f'onnx2tf가 종료 코드 {proc.returncode}로 실패했습니다.')
 
     # 2. SavedModel -> INT8 TFLite (캘리브레이션 기반 완전 양자화)
     import tensorflow as tf  # onnx2tf 실행 후에 import (로그 정리 목적)
