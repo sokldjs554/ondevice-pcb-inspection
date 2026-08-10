@@ -6,7 +6,7 @@ PCB 표면 결함(open, short, mousebite, spur, copper, pin-hole) 6종을 엣지
 
 ![검출 데모](results/detections/20085291_test_result.png)
 
-> 초록 박스: 모델 검출 결과 / 빨강 박스: 정답(어노테이션) — 테스트 보드의 정답 결함 9개를 모두 검출 (MobileNetV2 INT8, 보드 1장당 약 0.2초)
+> 초록 박스: 모델 검출 결과 / 빨강 박스: 정답(어노테이션) — 테스트 보드의 정답 결함 9개를 모두 검출 (MobileNetV2 INT8, 보드 1장당 약 0.5초)
 
 ## 왜 이 프로젝트를 했나
 
@@ -169,7 +169,7 @@ python src/train_qat.py --epochs 3
   지원되는 걸 확인했습니다.
 - MAC 유닛을 8배(32→256) 늘려도 속도는 2배가 안 올랐습니다 — **메모리 대역폭이 병목**이라는
   뜻으로, 하드웨어 사양만으로는 한계가 있다는 걸 숫자로 보게 됐습니다.
-- ONNX Runtime INT8과 TFLite INT8의 정확도 차이가 0.03~0.22%p로, 툴체인이 달라도 결과가
+- ONNX Runtime INT8과 TFLite INT8의 정확도 차이가 0.1%p 이내로, 툴체인이 달라도 결과가
   거의 같았습니다.
 
 자세한 과정과 전체 비교표: [npu/README.md](npu/README.md)
