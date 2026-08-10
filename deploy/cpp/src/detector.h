@@ -42,6 +42,14 @@ public:
 
     std::vector<Detection> detect(const GrayImage& gray);
 
+    // 전처리와 추론을 나눠서 쓰고 싶을 때 (배치 검사에서 두 단계를 다른 스레드에 태운다)
+    struct Prepared {
+        std::vector<float> tensor;  // NCHW
+        int ny = 0, nx = 0;
+    };
+    Prepared preprocess(const GrayImage& gray) const;
+    std::vector<Detection> inferPrepared(const Prepared& prep);
+
     // 이미지를 줄여가며 여러 번 훑어서 64px 윈도우보다 큰 결함까지 잡는다.
     std::vector<Detection> detectMultiscale(const GrayImage& gray,
                                             const std::vector<float>& scales = {1.0f, 0.5f});

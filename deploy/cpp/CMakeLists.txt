@@ -17,11 +17,13 @@ add_executable(detect_board
     src/detector.cpp
     src/image_io.cpp
     src/postprocess.cpp
-    src/tcp_sender.cpp)
+    src/tcp_sender.cpp
+    src/batch.cpp)
 
 target_include_directories(detect_board PRIVATE ${ORT_HOME}/include ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_directories(detect_board PRIVATE ${ORT_HOME}/lib)
-target_link_libraries(detect_board onnxruntime)
+find_package(Threads REQUIRED)
+target_link_libraries(detect_board onnxruntime Threads::Threads)
 
 # 컴파일 경고를 켜두면 실수를 빨리 찾을 수 있어서 넣었다
 target_compile_options(detect_board PRIVATE -Wall -Wextra)

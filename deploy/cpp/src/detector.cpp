@@ -89,22 +89,20 @@ SlidingWindowDetector::SlidingWindowDetector(const std::string& model_path, int 
     channels_ = static_cast<int>(shape[1]);  // SimpleCNN=1, MobileNetV2=3
 }
 
-std::vector<Detection> SlidingWindowDetector::detect(const GrayImage& gray) {
-    timing_ = Timing{};
-    if (gray.w < PATCH || gray.h < PATCH) return {};
+SlidingWindowDetector::Prepared SlidingWindowDetector::preprocess(const GrayImage& gray) const {
+    // 슬라이딩 윈도우를 전부 잘라서 NCHW 텐서 하나로 만든다.
+    // 추론과 분리해둬서, 배치 검사에서는 이 부분을 다른 스레드가 미리 돌려놓을 수 있다.
+    Prepared p;
+    if (gray.w < PATCH || gray.h < PATCH) return p;
 
-    const int ny = (gray.h - PATCH) / stride_ + 1;
-    const int nx = (gray.w - PATCH) / stride_ + 1;
-    const int num = ny * nx;
-    last_windows_ = num;
+    p.ny = (gray.h - PATCH) / stride_ + 1;
+    p.nx = (gray.w - PATCH) / stride_ + 1;
     const size_t patch_floats = static_cast<size_t>(channels_) * PATCH * PATCH;
+    p.tensor.resize(static_cast<size_t>(p.ny) * p.nx * patch_floats);
 
-    // 1. 전처리: 윈도우를 전부 잘라서 NCHW 텐서로 만든다
-    auto t0 = Clock::now();
-    std::vector<float> input(static_cast<size_t>(num) * patch_floats);
-    for (int wy = 0; wy < ny; wy++) {
-        for (int wx = 0; wx < nx; wx++) {
-            float* dst = input.data() + static_cast<size_t>(wy * nx + wx) * patch_floats;
+    for (int wy = 0; wy < p.ny; wy++) {
+        for (int wx = 0; wx < p.nx; wx++) {
+            float* dst = p.tensor.data() + static_cast<size_t>(wy * p.nx + wx) * patch_floats;
             for (int py = 0; py < PATCH; py++) {
                 const unsigned char* row = &gray.data[static_cast<size_t>(wy * stride_ + py) * gray.w
                                                       + wx * stride_];
@@ -117,23 +115,30 @@ std::vector<Detection> SlidingWindowDetector::detect(const GrayImage& gray) {
             }
         }
     }
-    timing_.preprocess = ms_since(t0);
+    return p;
+}
 
-    // 2. 추론: 파이썬 버전처럼 256개씩 나눠서 돌린다.
-    //    한 번에 다 넣으면 361개 * 3채널 기준으로 임시 버퍼가 커져서, 메모리가 작은
-    //    장비를 생각해 쪼갰다. 속도 차이는 거의 없었다.
+std::vector<Detection> SlidingWindowDetector::inferPrepared(const Prepared& prep) {
+    const int num = prep.ny * prep.nx;
+    if (num == 0) return {};
+    last_windows_ = num;
+    const size_t patch_floats = static_cast<size_t>(channels_) * PATCH * PATCH;
+
+    // 추론: 파이썬 버전처럼 256개씩 나눠서 돌린다.
+    // 한 번에 다 넣으면 361개 * 3채널 기준으로 임시 버퍼가 커져서, 메모리가 작은
+    // 장비를 생각해 쪼갰다. 속도 차이는 거의 없었다.
     const int BATCH = 256;
     std::vector<float> logits(static_cast<size_t>(num) * NUM_CLASSES);
     auto mem = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     const char* in_names[] = {input_name_.c_str()};
     const char* out_names[] = {output_name_.c_str()};
 
-    t0 = Clock::now();
+    auto t0 = Clock::now();
     for (int start = 0; start < num; start += BATCH) {
         int n = std::min(BATCH, num - start);
         std::vector<int64_t> dims = {n, channels_, PATCH, PATCH};
         Ort::Value in = Ort::Value::CreateTensor<float>(
-            mem, input.data() + static_cast<size_t>(start) * patch_floats,
+            mem, const_cast<float*>(prep.tensor.data()) + static_cast<size_t>(start) * patch_floats,
             static_cast<size_t>(n) * patch_floats, dims.data(), dims.size());
         auto out = session_.Run(Ort::RunOptions{nullptr}, in_names, &in, 1, out_names, 1);
         std::copy_n(out[0].GetTensorData<float>(), static_cast<size_t>(n) * NUM_CLASSES,
@@ -141,7 +146,7 @@ std::vector<Detection> SlidingWindowDetector::detect(const GrayImage& gray) {
     }
     timing_.inference = ms_since(t0);
 
-    // 3. 후처리: 윈도우별 클래스/확신도 -> 인접 윈도우 묶기
+    // 후처리: 윈도우별 클래스/확신도 -> 인접 윈도우 묶기
     t0 = Clock::now();
     std::vector<int> cls_map(num);
     std::vector<float> conf_map(num);
@@ -152,8 +157,18 @@ std::vector<Detection> SlidingWindowDetector::detect(const GrayImage& gray) {
         cls_map[i] = best;
         conf_map[i] = probs[best];
     }
-    auto dets = group_windows(cls_map, conf_map, ny, nx, stride_, thresh_);
+    auto dets = group_windows(cls_map, conf_map, prep.ny, prep.nx, stride_, thresh_);
     timing_.postprocess = ms_since(t0);
+    return dets;
+}
+
+std::vector<Detection> SlidingWindowDetector::detect(const GrayImage& gray) {
+    timing_ = Timing{};
+    auto t0 = Clock::now();
+    Prepared prep = preprocess(gray);
+    double pre_ms = ms_since(t0);
+    auto dets = inferPrepared(prep);
+    timing_.preprocess = pre_ms;
     return dets;
 }
 

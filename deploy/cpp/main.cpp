@@ -17,6 +17,7 @@
 #include "src/detector.h"
 #include "src/image_io.h"
 #include "src/postprocess.h"
+#include "src/batch.h"
 #include "src/tcp_sender.h"
 
 namespace {
@@ -33,6 +34,12 @@ struct Options {
     int bench = 0;            // >0이면 벤치마크 모드 반복 횟수
     bool refine = false;
     bool multiscale = false;
+    // 배치 검사 모드
+    std::string dir;          // 폴더를 지정하면 그 안의 보드를 연속 검사
+    std::string jsonl;        // 배치 결과를 한 줄 JSON으로 저장할 파일
+    int limit = 0;
+    bool pipeline = false;
+    bool quiet = false;
 };
 
 void print_usage(const char* prog) {
@@ -49,7 +56,14 @@ void print_usage(const char* prog) {
         "  --threads <정수>   추론 스레드 수 (기본: 코어 수)\n"
         "  --send host:port   결과를 TCP(JSON)로 모니터링 서버에 전송\n"
         "  --out <경로>       결과 이미지 저장 경로 (기본 result_cpp.png)\n"
-        "  --bench <횟수>     검출을 반복해서 스레드 수별 속도를 비교\n",
+        "  --bench <횟수>     검출을 반복해서 스레드 수별 속도를 비교\n"
+        "\n"
+        " 배치 검사 (폴더 안의 보드를 연속으로 검사)\n"
+        "  --dir <폴더>       검사할 보드 이미지가 들어있는 폴더\n"
+        "  --limit <정수>     앞에서 N장만 검사\n"
+        "  --pipeline         읽기·전처리를 별도 스레드로 돌려 추론과 겹침\n"
+        "  --jsonl <경로>     보드별 결과를 한 줄 JSON으로 저장\n"
+        "  --quiet            보드별 출력 생략, 요약만\n",
         prog);
 }
 
@@ -81,12 +95,17 @@ bool parse_args(int argc, char** argv, Options* o) {
         else if (a == "--stride")     { auto v = next("--stride");    if (!v) return false; o->stride = std::stoi(v); }
         else if (a == "--threads")    { auto v = next("--threads");   if (!v) return false; o->threads = std::stoi(v); }
         else if (a == "--bench")      { auto v = next("--bench");     if (!v) return false; o->bench = std::stoi(v); }
+        else if (a == "--dir")        { auto v = next("--dir");       if (!v) return false; o->dir = v; }
+        else if (a == "--jsonl")      { auto v = next("--jsonl");     if (!v) return false; o->jsonl = v; }
+        else if (a == "--limit")      { auto v = next("--limit");     if (!v) return false; o->limit = std::stoi(v); }
+        else if (a == "--pipeline")   { o->pipeline = true; }
+        else if (a == "--quiet")      { o->quiet = true; }
         else if (a == "--refine")     { o->refine = true; }
         else if (a == "--multiscale") { o->multiscale = true; }
         else if (a == "--help" || a == "-h") { return false; }
         else { std::printf("모르는 옵션: %s\n", a.c_str()); return false; }
     }
-    return !o->image.empty();
+    return !o->image.empty() || !o->dir.empty();
 }
 
 std::string auto_template_path(const std::string& image_path) {
@@ -161,6 +180,19 @@ int main(int argc, char** argv) {
     if (!parse_args(argc, argv, &o)) {
         print_usage(argv[0]);
         return 1;
+    }
+
+    // 배치 검사 모드: 폴더 안의 보드를 연속으로 검사한다
+    if (!o.dir.empty()) {
+        SlidingWindowDetector detector(o.model, o.stride, o.thresh, o.threads);
+        BatchOptions b;
+        b.dir = o.dir;
+        b.out_jsonl = o.jsonl;
+        b.send = o.send;
+        b.limit = o.limit;
+        b.pipeline = o.pipeline;
+        b.quiet = o.quiet;
+        return run_batch(detector, b) > 0 ? 0 : 1;
     }
 
     GrayImage gray = load_gray(o.image);

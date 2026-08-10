@@ -149,7 +149,7 @@ python deploy/eval_detection.py --use-template --refine --iou 0.33 --num-boards 
 
 ![](14_eval_iou.png)
 
-박스 정밀화 없이 IoU 기준으로 재면 recall이 14.8%까지 떨어집니다. 검출 박스가
+박스 정밀화 없이 IoU 기준으로 재면 recall이 15.6%까지 떨어집니다. 검출 박스가
 윈도우 단위(64px 배수)로 나오기 때문인데, 템플릿 차분으로 박스를 좁혀 75.0%가 됐습니다.
 
 ## 15~16. 결함 크기별 recall — 단일 스케일 vs 멀티스케일
