@@ -93,6 +93,30 @@ python src/train.py --model mobilenet_v2 --epochs 30
 python src/evaluate.py --model simple_cnn
 ```
 
+### 판단 근거 확인 (Grad-CAM)
+
+정확도 숫자만으로는 모델이 결함을 보고 맞힌 건지, 주변 패턴을 외운 건지 알 수 없어서
+Grad-CAM으로 판단 근거 영역을 시각화했습니다. 한 가지 조정이 필요했는데, 64x64 입력에서
+MobileNetV2의 마지막 특징맵은 2x2라 위치 정보가 거의 없어서(히트맵이 화면 절반짜리 얼룩이 됨),
+stride 8 구간(`features[6]`, 8x8)을 기본 층으로 썼습니다.
+
+```bash
+python src/gradcam.py --model mobilenet_v2
+```
+
+![Grad-CAM](results/gradcam_mobilenet_v2.png)
+
+정분류 사례에서는 히트가 실제 결함 위치에 찍힙니다 — short는 배선을 잇는 다리, spur는 돌기,
+copper는 이물 조각. 모델이 결함 자체를 근거로 판단한다는 확인입니다.
+
+![Grad-CAM errors](results/gradcam_errors_mobilenet_v2.png)
+
+오분류 사례가 더 흥미로운데, **정상 패치를 short(확신도 0.97)로 잘못 본 사례에서 모델은
+정상 배선의 잘록한 연결부를 보고 있었습니다.** confusion matrix에서 세운 가설(배선이 촘촘한
+구간은 정상 연결부도 short처럼 보인다)이 그림으로 확인된 셈입니다. spur를 정상으로 놓친
+사례들은 히트가 배선 가장자리에 넓게 퍼져 있어, 돌기가 작을수록 정상 가장자리와 구분이
+어려워지는 경향과 일치합니다.
+
 ## 3. 경량화: ONNX 변환 + INT8 정적 양자화
 
 NPU 같은 엣지 AI 가속기는 대부분 INT8 연산이 기본이고, 프레임워크에 종속되지 않는
